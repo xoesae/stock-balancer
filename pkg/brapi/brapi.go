@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/xoesae/stock-balancer/entity"
+	"github.com/xoesae/stock-balancer/internal/entity"
 	"log"
 	"net/http"
+	"time"
 )
 
 type Brapi struct {
@@ -15,7 +16,7 @@ type Brapi struct {
 	client *http.Client
 }
 
-func (b Brapi) GetStockDetails(stock entity.Stock) (StockData, error) {
+func (b Brapi) GetStockDetails(stock entity.Stock) (entity.Stock, error) {
 	var body []byte
 
 	url := fmt.Sprintf("%s/quote/%s?token=%s", b.Url, stock.Ticker, b.Token)
@@ -34,12 +35,20 @@ func (b Brapi) GetStockDetails(stock entity.Stock) (StockData, error) {
 	var response BrapiResponse
 	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
 		log.Fatal("Erro ao decodificar resposta JSON:", err)
-		return StockData{}, err
+		return entity.Stock{}, err
 	}
 
 	if len(response.Results) == 0 {
-		return StockData{}, fmt.Errorf("not found")
+		return entity.Stock{}, fmt.Errorf("not found")
 	}
 
-	return response.Results[0], nil
+	data := response.Results[0]
+
+	return entity.Stock{
+		Ticker:       stock.Ticker,
+		IdealRatio:   stock.IdealRatio,
+		CurrentPrice: data.RegularMarketPrice,
+		Amount:       stock.Amount,
+		UpdatedAt:    time.Now(),
+	}, nil
 }

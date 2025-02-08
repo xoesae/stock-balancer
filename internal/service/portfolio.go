@@ -1,12 +1,10 @@
 package service
 
 import (
-	"github.com/xoesae/stock-balancer/entity"
-	"github.com/xoesae/stock-balancer/pkg/brapi"
-	"github.com/xoesae/stock-balancer/repository"
+	"github.com/xoesae/stock-balancer/internal/entity"
+	"github.com/xoesae/stock-balancer/internal/repository"
 	"math"
 	"sort"
-	"time"
 )
 
 type buysPerTicker map[string]int
@@ -16,11 +14,11 @@ type stockPriority struct {
 	rank  float64
 }
 
-type StockService struct {
+type PortfolioService struct {
 	Repository repository.StockRepository
 }
 
-func (s *StockService) calculatePortfolioValue(stocks []entity.Stock) float64 {
+func (s *PortfolioService) calculatePortfolioValue(stocks []entity.Stock) float64 {
 	total := 0.0
 
 	for _, stock := range stocks {
@@ -30,7 +28,7 @@ func (s *StockService) calculatePortfolioValue(stocks []entity.Stock) float64 {
 	return total
 }
 
-func (s *StockService) calculateIdealValuePerTicker(stocks []entity.Stock, total float64) map[string]float64 {
+func (s *PortfolioService) calculateIdealValuePerTicker(stocks []entity.Stock, total float64) map[string]float64 {
 	values := make(map[string]float64)
 
 	for _, stock := range stocks {
@@ -40,7 +38,7 @@ func (s *StockService) calculateIdealValuePerTicker(stocks []entity.Stock, total
 	return values
 }
 
-func (s *StockService) makePriorityList(stocks []entity.Stock, buys buysPerTicker, idealValues map[string]float64, remaining float64) []stockPriority {
+func (s *PortfolioService) makePriorityList(stocks []entity.Stock, buys buysPerTicker, idealValues map[string]float64, remaining float64) []stockPriority {
 	priorities := make([]stockPriority, len(stocks))
 
 	for i, stock := range stocks {
@@ -66,7 +64,7 @@ func (s *StockService) makePriorityList(stocks []entity.Stock, buys buysPerTicke
 	return priorities
 }
 
-func (s *StockService) sortPriorities(priorities []stockPriority) []stockPriority {
+func (s *PortfolioService) sortPriorities(priorities []stockPriority) []stockPriority {
 	sort.Slice(priorities, func(i, j int) bool {
 		// if they have same rank, order by price
 		if priorities[i].rank == priorities[j].rank {
@@ -80,7 +78,7 @@ func (s *StockService) sortPriorities(priorities []stockPriority) []stockPriorit
 	return priorities
 }
 
-func (s *StockService) BalancePortfolio(stocks []entity.Stock, investment float64) entity.BalanceResult {
+func (s *PortfolioService) BalancePortfolio(stocks []entity.Stock, investment float64) entity.BalanceResult {
 	total := s.calculatePortfolioValue(stocks)
 	totalAfterInvestment := total + investment
 
@@ -111,43 +109,4 @@ func (s *StockService) BalancePortfolio(stocks []entity.Stock, investment float6
 	}
 
 	return entity.BalanceResult{Buys: buys, Remaining: remaining}
-}
-
-func (s *StockService) Update(client brapi.Brapi, stock entity.Stock) (entity.Stock, error) {
-	if stock.UpdatedAt.After(time.Now().Add(-2 * time.Hour)) {
-		return stock, nil
-	}
-
-	data, err := client.GetStockDetails(stock)
-	if err != nil {
-		return entity.Stock{}, err
-	}
-
-	return entity.Stock{
-		Ticker:       stock.Ticker,
-		IdealRatio:   stock.IdealRatio,
-		CurrentPrice: data.RegularMarketPrice,
-		Amount:       stock.Amount,
-		UpdatedAt:    time.Now(),
-	}, nil
-}
-
-func (s *StockService) UpdateAll(client brapi.Brapi, stocks []entity.Stock) ([]entity.Stock, error) {
-	var updatedStocks []entity.Stock
-
-	for _, stock := range stocks {
-		updated, err := s.Update(client, stock)
-		if err != nil {
-			return updatedStocks, err
-		}
-
-		updatedStocks = append(updatedStocks, updated)
-	}
-
-	err := s.Repository.Save(updatedStocks)
-	if err != nil {
-		return updatedStocks, err
-	}
-
-	return updatedStocks, nil
 }

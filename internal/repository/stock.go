@@ -3,7 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/xoesae/stock-balancer/entity"
+	"github.com/xoesae/stock-balancer/internal/entity"
 	"os"
 )
 
