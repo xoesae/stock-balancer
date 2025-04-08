@@ -23,7 +23,7 @@ Stock Balancer é uma ferramenta de linha de comando (CLI) desenvolvida em Go pa
 
 1. Clone o repositório:
    ```bash
-   git clone https://github.com/seu-usuario/stock-balancer.git
+   git clone https://github.com/xoesae/stock-balancer.git
    cd stock-balancer
    ```
 
